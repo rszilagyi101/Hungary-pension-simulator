@@ -1,6 +1,6 @@
 # Hungarian Pension Simulator – web version
 
-The same simulator as the desktop app, as a web page. Everything it calculates (the seven models, the
+Everything it calculates (the seven models, the
 cohort-component population projection, scenarios, age trees and the CSV / XLSX / PDF / Markdown exports)
 runs in the visitor's browser in JavaScript. A small PHP file, `api.php`, downloads the official KSH and
 Eurostat tables, which browsers cannot fetch directly, and keeps one copy on the server for every visitor.
