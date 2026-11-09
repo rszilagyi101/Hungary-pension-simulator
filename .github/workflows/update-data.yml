@@ -1,0 +1,67 @@
+# Pension Simulator on GitHub Pages
+# - downloads the KSH and Eurostat tables every Monday (and when you start it by hand),
+# - stores them in site/data/official.json in this repository,
+# - publishes the site folder (without the PHP files) to GitHub Pages.
+name: Update data and publish site
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"        # every Monday 04:17 UTC; change or remove as you like
+  workflow_dispatch:             # "Run workflow" button on the Actions tab
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/**"]
+
+permissions:
+  contents: write                # to save the downloaded data
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download KSH and Eurostat data
+        # on a normal push only when no data file exists yet; always on schedule and manual runs
+        if: github.event_name != 'push' || hashFiles('site/data/official.json') == ''
+        continue-on-error: true    # if KSH/Eurostat are down, publish with the previous data
+        run: |
+          php -v | head -1
+          php site/lib/build_static.php site/data/official.json
+
+      - name: Save the data in the repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          if [ -f site/data/official.json ]; then
+            git add site/data/official.json
+            git diff --cached --quiet || { git commit -m "Update official KSH and Eurostat data" && git push; }
+          fi
+
+      - name: Prepare the static site (no PHP files)
+        run: |
+          cp -r site _site
+          rm -rf _site/lib _site/cache
+          find _site \( -name '*.php' -o -name '.htaccess' \) -delete
+          find _site -maxdepth 2 | sort
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
