@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hungarian Pension Simulator</title>
+  <meta name="description" content="Simulate the number of pensioners and the population of Hungary to 2070 with KSH and Eurostat data, time-series and machine-learning models.">
+  <meta name="theme-color" content="#1f2e3b">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <!--PS_CONFIG--><script>window.PS_CONFIG = { apiUrl: "api.php", preview: false, vendorBase: "assets/vendor/" };</script><!--/PS_CONFIG-->
+</head>
+<body>
+<div class="preview-banner" id="previewBanner" hidden>Preview of the web version. The simulation runs fully in your browser on the bundled KSH data; downloads and the live KSH/Eurostat download work once the site is on your own PHP host.</div>
+<header class="top">
+  <div class="brand">
+    <h1>Pensioners and population in Hungary, 1990–2070</h1>
+    <p>Simulation on KSH and Eurostat data with time-series and machine-learning models</p>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" class="tab active" data-tab="forecast" aria-selected="true">Forecast</button>
+    <button role="tab" class="tab" data-tab="scenarios" aria-selected="false">Scenarios</button>
+    <button role="tab" class="tab" data-tab="population" aria-selected="false">Population</button>
+    <button role="tab" class="tab" data-tab="agetree" aria-selected="false">Age tree</button>
+    <button role="tab" class="tab" data-tab="data" aria-selected="false">Data</button>
+    <button role="tab" class="tab" data-tab="method" aria-selected="false">Method</button>
+  </nav>
+</header>
+
+<div class="layout">
+  <aside class="controls" id="settings" aria-label="Simulation settings">
+    <div class="controls-head">
+      <button id="runBtn" class="primary">Run simulation</button>
+      <label class="check"><input type="checkbox" id="autoRun" checked> Re-run when a setting changes</label>
+    </div>
+    <div id="controlGroups"></div>
+    <div class="controls-foot">
+      <h3>Settings file</h3>
+      <div class="btnrow">
+        <button data-save-settings="json">Save as JSON</button>
+        <button data-save-settings="csv">Save as CSV</button>
+      </div>
+      <label class="filebtn">Load settings…
+        <input type="file" id="settingsFile" accept=".json,.csv,.xlsx">
+      </label>
+      <button id="resetSettings" class="ghost">Restore default settings</button>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Forecast -->
+    <section id="tab-forecast" class="panel active" role="tabpanel">
+      <div class="statusline" id="status" aria-live="polite">Loading data…</div>
+
+      <div class="chartcard">
+        <div class="chart-head">
+          <h2 id="chartTitle">All pension &amp; benefit recipients</h2>
+          <div class="exports" aria-label="Export results">
+            <span>Export results and settings</span>
+            <a class="exp" data-fmt="csv">CSV</a>
+            <a class="exp" data-fmt="csvzip">CSV bundle</a>
+            <a class="exp" data-fmt="xlsx">XLSX</a>
+            <a class="exp" data-fmt="pdf">PDF</a>
+            <a class="exp" data-fmt="md">Markdown</a>
+          </div>
+        </div>
+        <div class="chartwrap"><canvas id="chart" aria-label="Observed and forecast pensioner numbers"></canvas></div>
+        <p class="hint">Click a model name in the legend to hide or show it. The shaded band is the ensemble prediction interval.</p>
+      </div>
+
+      <ol class="rail" id="milestones" aria-label="Milestone years"></ol>
+
+      <div class="card sexcard" id="sexCard">
+        <div class="chart-head">
+          <h3>By sex</h3>
+          <div class="exports"><a class="exp" data-fmt="sexcsv">By sex CSV</a></div>
+        </div>
+        <div class="sexgrid">
+          <div class="chartwrap short"><canvas id="sexChart" aria-label="Recipients by sex"></canvas></div>
+          <div>
+            <div class="chartwrap mini2"><canvas id="shareChart" aria-label="Women's share of recipients"></canvas></div>
+            <div class="tablewrap"><table id="sexMsTable" class="num"></table></div>
+          </div>
+        </div>
+        <p class="hint" id="sexNote"></p>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>Model accuracy on the hold-out years</h3>
+          <div class="tablewrap"><table id="metricsTable" class="num"></table></div>
+          <p class="hint" id="denomNote"></p>
+        </div>
+        <div class="card">
+          <h3>Yearly results</h3>
+          <div class="tablewrap tall"><table id="yearTable" class="num"></table></div>
+        </div>
+      </div>
+      <div id="warnings" class="warnings"></div>
+    </section>
+
+    <!-- Scenarios -->
+    <section id="tab-scenarios" class="panel" role="tabpanel">
+      <div class="card scen-head">
+        <div class="scen-intro">
+          <h2>Build a scenario</h2>
+          <p>Tick the parameters to include and set how strong each one is. The scenario runs on top of the
+            sidebar settings, which act as the baseline. Parameters are grouped by their expected effect on the
+            pension burden: recipients per 100 people aged 15–64.</p>
+        </div>
+        <div class="scen-tools">
+          <label>Scenario name <input id="scenName" value="My scenario" maxlength="60"></label>
+          <div class="btnrow">
+            <button id="scenSave">Save scenario</button>
+            <select id="scenSaved" aria-label="Saved scenarios"><option value="">Saved scenarios…</option></select>
+            <button id="scenDelete" class="ghost">Delete</button>
+          </div>
+          <div class="btnrow">
+            <button data-pick="positive">Tick all positive</button>
+            <button data-pick="negative">Tick all negative</button>
+            <button data-pick="neutral">Tick all neutral</button>
+            <button data-pick="none" class="ghost">Clear</button>
+          </div>
+          <div class="btnrow">
+            <a class="btnlink" href="#" id="scenExportDef">Download definition</a>
+            <label class="filebtn">Load definition…<input type="file" id="scenImport" accept=".json"></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="scen-cols" id="scenCols"></div>
+
+      <div class="card scen-run">
+        <label class="check"><input type="checkbox" id="scenPresets" checked> Also run optimistic (all positive) and pessimistic (all negative)</label>
+        <label class="check"><input type="checkbox" id="scenImpacts" checked> Measure each ticked parameter's impact</label>
+        <select id="scenImpactMode" aria-label="How impacts are measured">
+          <option value="within">within this scenario (with interactions)</option>
+          <option value="alone">each on its own against the baseline</option>
+        </select>
+        <button id="scenRun" class="primary">Run scenario</button>
+        <span id="scenStatus" class="scen-status" aria-live="polite"></span>
+      </div>
+
+      <div id="scenResults" hidden>
+        <div class="chartcard">
+          <div class="chart-head">
+            <h2 id="scenTitle">Scenario comparison</h2>
+            <div class="exports" aria-label="Export scenario">
+              <span>Export scenario</span>
+              <a class="exp sx" data-sfmt="csv">CSV</a><a class="exp sx" data-sfmt="xlsx">XLSX</a>
+              <a class="exp sx" data-sfmt="pdf">PDF</a><a class="exp sx" data-sfmt="md">Markdown</a>
+            </div>
+          </div>
+          <div class="filters scen-metric">
+            <label><input type="radio" name="scenMetric" value="pensioners" checked> Recipients</label>
+            <label><input type="radio" name="scenMetric" value="dependency"> Per 100 aged 15–64</label>
+            <label><input type="radio" name="scenMetric" value="men"> Men</label>
+            <label><input type="radio" name="scenMetric" value="women"> Women</label>
+            <label><input type="radio" name="scenMetric" value="population"> Population</label>
+            <label><input type="radio" name="scenMetric" value="share_65_plus"> Aged 65+ %</label>
+            <label><input type="radio" name="scenMetric" value="retirement_age"> Retirement age</label>
+          </div>
+          <div class="chartwrap short"><canvas id="scenChart" aria-label="Scenario comparison chart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Milestones compared with the baseline</h3>
+          <div class="tablewrap"><table id="scenTable" class="num"></table></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3 id="impTitle">What each parameter contributes</h3>
+            <p class="hint" id="impNote"></p>
+            <div class="chartwrap" id="impWrap"><canvas id="impChart" aria-label="Parameter impacts"></canvas></div>
+            <div class="tablewrap"><table id="impTable" class="num"></table></div>
+          </div>
+          <div class="card">
+            <h3>Settings changed by your scenario</h3>
+            <div class="tablewrap"><table id="chgTable"></table></div>
+            <div id="scenWarn" class="warnings"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Population -->
+    <section id="tab-population" class="panel" role="tabpanel">
+      <div class="statusline" id="popStatus"></div>
+      <ol class="rail pop" id="popMilestones" aria-label="Population milestones"></ol>
+
+      <div class="chartcard">
+        <div class="chart-head">
+          <h2>Population of Hungary on 1 January</h2>
+          <div class="exports" aria-label="Export population">
+            <span>Export population</span>
+            <a class="exp" data-fmt="popcsv">Yearly CSV</a>
+            <a class="exp" data-fmt="agecsv">Ages by sex CSV</a>
+            <a class="exp" data-fmt="xlsx">XLSX</a>
+            <a class="exp" data-fmt="pdf">PDF</a>
+          </div>
+        </div>
+        <div class="chartwrap short"><canvas id="popChart" aria-label="Population total, observed and projected"></canvas></div>
+        <p class="hint" id="popAssumptions"></p>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="table-head">
+            <h3>Population by sex</h3>
+            <div class="filters">
+              <label><input type="radio" name="psView" value="all" checked> All ages</label>
+              <label><input type="radio" name="psView" value="65"> 65+</label>
+              <label><input type="radio" name="psView" value="80"> 80+</label>
+              <label><input type="radio" name="psView" value="ratio"> Women per 1,000 men</label>
+            </div>
+          </div>
+          <div class="chartwrap pyr"><canvas id="popSexChart" aria-label="Population by sex over time"></canvas></div>
+          <p class="hint">The full age and sex structure of any year is on the Age tree tab.</p>
+        </div>
+        <div class="card">
+          <div class="table-head">
+            <h3>Age groups over time</h3>
+            <div class="filters">
+              <label><input type="radio" name="agView" value="count" checked> Persons</label>
+              <label><input type="radio" name="agView" value="share"> Share</label>
+            </div>
+          </div>
+          <div class="chartwrap pyr"><canvas id="ageChart" aria-label="Age groups over time"></canvas></div>
+          <p class="hint">Vertical line: last observed year. After it, the cohort-component projection.</p>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3>Demographic indicators</h3>
+          <div class="tablewrap tall"><table id="popTable" class="num"></table></div>
+        </div>
+        <div class="card">
+          <h3>How well the projection engine reproduces 2016–2026</h3>
+          <p id="valIntro" class="hint"></p>
+          <div class="tablewrap"><table id="valTable" class="num"></table></div>
+          <div class="chartwrap mini"><canvas id="valChart" aria-label="Error by age in the back-test"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Age tree -->
+    <section id="tab-agetree" class="panel" role="tabpanel">
+      <div class="tree-controls card">
+        <button id="treePlay" aria-label="Play through the years">Play</button>
+        <div class="tree-year">
+          <input type="range" id="treeYear" min="1990" max="2050" step="1" value="2026" aria-label="Year of the age tree">
+          <div class="tree-scale" id="treeScale"></div>
+        </div>
+        <output id="treeYearOut" class="tree-year-out">2026</output>
+        <label>Age bands
+          <select id="treeGroup"><option value="1">Single years</option><option value="5">5-year groups</option></select></label>
+        <label>Compare with
+          <select id="treeCompare"></select></label>
+        <label class="check"><input type="checkbox" id="treeShade" checked> Shade retirement age and above</label>
+      </div>
+
+      <div class="treegrid">
+        <div class="card">
+          <div class="table-head">
+            <h2 id="treeTitle">Age tree</h2>
+            <div class="exports"><a class="exp on" id="treeCsv">This year as CSV</a><a class="exp" data-fmt="agecsv">All years CSV</a></div>
+          </div>
+          <div class="chartwrap tree"><canvas id="treeChart" aria-label="Age tree (population pyramid)"></canvas></div>
+          <p class="hint" id="treeNote"></p>
+        </div>
+        <aside class="card treeside" id="treeSide" aria-live="polite"></aside>
+      </div>
+
+      <div class="card">
+        <h3>Age trees side by side</h3>
+        <p class="hint">Same scale in every panel. Select a panel to open it above.</p>
+        <div class="minis" id="treeMinis"></div>
+      </div>
+
+      <div class="card">
+        <div class="table-head">
+          <h3 id="treeTableTitle">Exact figures</h3>
+        </div>
+        <div class="tablewrap tall"><table id="treeTable" class="num"></table></div>
+      </div>
+    </section>
+
+    <!-- Data -->
+    <section id="tab-data" class="panel" role="tabpanel">
+      <div class="grid2 data-actions">
+        <div class="card">
+          <h3>Official sources</h3>
+          <p>The page ships with KSH STADAT tables: recipients 1990–2026, population, 65+ share, births, deaths,
+             fertility, life expectancy, and the age structure by single year and sex (nep0003).
+             The server can download the latest KSH tables and the Eurostat population by age and sex with its
+             EUROPOP projection; the copy it stores is shared by every visitor.</p>
+          <p class="mode" id="dataMode"></p>
+          <div class="keyrow" id="refreshKeyRow" hidden>
+            <label>Site key <input type="password" id="refreshKey" autocomplete="off" placeholder="from config.php"></label>
+          </div>
+          <button id="refreshBtn" class="primary">Download latest official data</button>
+          <ul id="refreshReport" class="report"></ul>
+        </div>
+        <div class="card">
+          <h3>Add your own data</h3>
+          <p>CSV or XLSX with a <code>year</code> column and any of:
+            <code>pensioners_total</code>, <code>oldage_pensioners</code>, <code>population</code>,
+            <code>share_65plus</code>, <code>pop_65plus</code>, <code>life_expectancy</code>,
+            <code>retirement_age</code>. Future years act as scenario inputs. Your data stays in this browser;
+            it is never sent to the server.</p>
+          <form id="uploadForm" class="uploadrow">
+            <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
+            <select name="mode" aria-label="How to merge">
+              <option value="override">Replace existing values</option>
+              <option value="fill">Only fill empty cells</option>
+            </select>
+            <button type="submit" class="primary">Add data</button>
+          </form>
+          <div class="btnrow">
+            <a class="btnlink" href="#" data-file="/api/data/template">Download template</a>
+            <a class="btnlink" href="#" data-file="/api/data/download">Download merged data</a>
+            <button id="resetData" class="ghost">Remove my data</button>
+          </div>
+          <p id="uploadMsg" class="msg" aria-live="polite"></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-head">
+          <h3>Data table</h3>
+          <div class="filters">
+            <label><input type="radio" name="dview" value="all" checked> All years</label>
+            <label><input type="radio" name="dview" value="hist"> Observed</label>
+            <label><input type="radio" name="dview" value="proj"> Projection</label>
+            <button id="saveEdits" class="primary" disabled>Save changes</button>
+          </div>
+        </div>
+        <p class="legend">
+          <span class="src s-default">Bundled KSH</span>
+          <span class="src s-online">Downloaded</span>
+          <span class="src s-interpolated">Interpolated</span>
+          <span class="src s-derived">Derived</span>
+          <span class="src s-user">Your data</span>
+          Edit any cell and save; your values override the official ones.
+        </p>
+        <div class="tablewrap tall"><table id="dataTable" class="num editable"></table></div>
+      </div>
+    </section>
+
+    <!-- Method -->
+    <section id="tab-method" class="panel prose" role="tabpanel">
+      <h2>How the simulation works</h2>
+      <p>The target is the January stock of recipients published by KSH: either all recipients of pensions,
+        benefits and annuities (table 25.1.1.2 for 1990–1999, 25.1.1.38 from 2000) or old-age pensioners only.
+        Regressors are the resident population on 1 January, the share and number of people aged 65 and over,
+        life expectancy at birth and the statutory retirement age.</p>
+      <h3>Models</h3>
+      <p><strong>ARIMA / ARIMAX</strong> fits an ARIMA(p,d,q) model, optionally on logs, with standardised
+        regressors: the 65+ population, the retirement age and a step dummy for the 2012 reform that moved
+        early-retirement and disability pensions into other benefit categories. Intervals come from the model.</p>
+      <p><strong>Holt exponential smoothing</strong> projects the level and trend of the series itself, with
+        an optional damping factor φ that flattens the trend over time.</p>
+      <p><strong>Demographic ratio model</strong> splits recipients into a ratio times an eligible population.
+        With Eurostat single-year-of-age data downloaded, the eligible population is everyone at or above the
+        retirement age in each year, so raising the retirement age removes whole birth cohorts. Without it, the
+        denominator is the 65+ population and each extra year of retirement age removes a set share of recipients.
+        The ratio follows a damped linear trend over a chosen window.</p>
+      <p><strong>Random forest, gradient boosting, ridge regression and a neural network</strong> learn the
+        recipients-per-65+-person ratio (or the count itself) from retirement age, the 65+ share, life
+        expectancy, the 2012 dummy, a time trend and lagged values, and forecast recursively. Tree models cannot
+        extrapolate beyond the retirement ages they have seen, so later increases are added through the same
+        elasticity as the ratio model.</p>
+      <h3>Population and age structure</h3>
+      <p>The age structure comes from KSH table 22.1.1.3 (single years of age by sex on 1 January). Years KSH
+        does not publish in the bundled file are filled from Eurostat demo_pjan after a data download, and
+        otherwise interpolated along each birth cohort and scaled to the official total population of the year.</p>
+      <p>The population projection is a cohort-component model by single year of age and sex. Each year, every
+        cohort survives one year using a mortality schedule whose level is calibrated to the life-expectancy path
+        of each sex, births come from an age-specific fertility schedule scaled to the fertility-rate path, and
+        net migrants are added with a young-adult age profile. Starting from 2016 with the observed fertility,
+        life expectancy and migration, the engine reproduces the published 2026 population within about half a
+        percent. Low and high variants move fertility, migration and life-expectancy gains together.</p>
+      <p>By default the pensioner models use this projection, and the ratio model's denominator is everyone at
+        or above the retirement age of each year, taken directly from the single-year ages. You can switch to the
+        Eurostat projection once downloaded, or to the simple fallback path.</p>
+      <h3>Men and women</h3>
+      <p>KSH publishes recipients by sex from 2000 (table 25.1.1.38). For each sex, the app models recipients per
+        person at or above that sex's retirement age (women's age was lower until 2009) with a damped trend, then
+        scales both so that men plus women equal the ensemble forecast. The split is back-tested on the hold-out
+        years. The age tree shades everyone at or above the retirement age of the year shown.</p>
+      <h3>Scenarios</h3>
+      <p>A scenario is a set of ticked parameters, each a named change to the baseline settings (for example
+        raising the retirement age by two years or adding 20,000 net migrants a year). Parameters are grouped as
+        positive (expected to lower the pension burden), negative (expected to raise it) or neutral (mainly
+        timing or structure). The burden is measured as recipients per 100 people aged 15–64. After a run, each
+        parameter's measured effect is shown next to its expected category, either within your scenario
+        (your scenario minus the same scenario without it) or on its own against the baseline. Back-tests are
+        run without scenario changes, so model weights stay the same across scenarios.</p>
+      <h3>Validation and ensemble</h3>
+      <p>Each model is refitted on the history without the last hold-out years and scored on them (MAE, RMSE,
+        MAPE). The ensemble weights models by the inverse of their MAPE, equally, or by your manual weights.
+        Ensemble intervals are weighted averages of the model bounds, a practical approximation rather than
+        an exact combined distribution.</p>
+      <h3>Scenario inputs</h3>
+      <p>Population after the last observed year comes from Eurostat EUROPOP (proj_25np, or proj_23np) once
+        downloaded. Before that, a fallback path follows the UN World Population Prospects 2024 medium variant
+        trend applied to the KSH 2026 base. You can shift the elderly population, set a future retirement age
+        path or link it to life expectancy, and add a drift to the recipient ratio. Any future values you add in
+        the Data tab replace the scenario values for those years.</p>
+      <h3>This web version</h3>
+      <p>Everything is calculated in your browser: the models, the population projection, the scenarios and the
+        exported files. The server only stores the official KSH and Eurostat tables it downloads, so they can be
+        shared by every visitor. Settings, saved scenarios and the data you add are kept in this browser
+        (local storage) and are never uploaded. The models match the desktop app; the ARIMA model uses the exact
+        likelihood, so results can differ slightly from statsmodels when the log option is off.</p>
+      <h3>Caveats</h3>
+      <p>Retirement ages before 2022 are an approximate average of the legislated male and female schedules;
+        women's 40-year eligibility and other special routes are not modelled separately. 1991–2000 population
+        values are interpolated between censuses until Eurostat data is downloaded. Results are scenarios, not
+        official forecasts.</p>
+    </section>
+  </main>
+</div>
+<a class="jump" href="#settings">Settings</a>
+<footer class="foot">
+  <p>Data: <a href="https://www.ksh.hu/stadat" rel="noopener">KSH STADAT</a> and
+    <a href="https://ec.europa.eu/eurostat" rel="noopener">Eurostat</a>. Results are simulations, not official forecasts.
+    Calculated in your browser; your own data stays on this device.</p>
+</footer>
+<!--PS_SCRIPTS-->
+<script src="assets/vendor/chart.umd.js"></script>
+<script src="assets/js/ps-defaults.js"></script>
+<script src="assets/js/ps-core.js"></script>
+<script src="assets/js/ps-data.js"></script>
+<script src="assets/js/ps-population.js"></script>
+<script src="assets/js/ps-models.js"></script>
+<script src="assets/js/ps-scenarios.js"></script>
+<script src="assets/js/ps-export.js"></script>
+<script src="assets/js/ps-api.js"></script>
+<script src="assets/js/app.js"></script>
+<!--/PS_SCRIPTS-->
+<script>if (window.PS_CONFIG && PS_CONFIG.preview) document.getElementById("previewBanner").hidden = false;</script>
+</body>
+</html>

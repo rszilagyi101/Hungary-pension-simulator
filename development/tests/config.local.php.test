@@ -1,0 +1,2 @@
+<?php
+return ['ksh_base' => 'http://127.0.0.1:8099/stadat_files', 'eurostat_base' => 'http://127.0.0.1:8099/data', 'min_refresh_minutes' => 30];
