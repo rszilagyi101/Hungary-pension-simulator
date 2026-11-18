@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+title: "Hungarian Pension Simulator"
+abstract: >-
+  Browser-based simulator of the number of pension recipients and the population of Hungary.
+  It combines official KSH STADAT and Eurostat data (1990 onwards) with time-series models
+  (ARIMA, Holt), a ratio model, machine-learning models (random forest, gradient boosting,
+  ridge regression, neural network) and a cohort-component population projection by single
+  year of age and sex, with scenario analysis and yearly forecasts to 2030, 2040, 2050 and beyond.
+authors:
+  - given-names: "Róbert"
+    family-names: "Szilágyi"
+    orcid: "https://orcid.org/0000-0002-1783-6483"
+version: "1.0.0"
+date-released: "2026-11-18"
+license: MIT
+keywords:
+  - pension
+  - pensioners
+  - population projection
+  - cohort-component method
+  - demography
+  - time series forecasting
+  - machine learning
+  - Hungary
+  - KSH
+  - Eurostat
+# After the first Zenodo release, you can add the concept DOI and the addresses:
+# doi: "10.5281/zenodo.XXXXXXX"
+# repository-code: "https://github.com/F101hu/REPOSITORY-NAME"
+# url: "https://f101hu.github.io/REPOSITORY-NAME/"
