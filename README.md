@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/1451192644.svg)](https://doi.org/10.5281/zenodo.24340936)
+
 # Hungarian Pension Simulator – web version
 
 Everything it calculates (the seven models, the
