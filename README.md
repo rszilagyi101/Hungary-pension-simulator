@@ -5,38 +5,6 @@ cohort-component population projection, scenarios, age trees and the CSV / XLSX 
 runs in the visitor's browser in JavaScript. A small PHP file, `api.php`, downloads the official KSH and
 Eurostat tables, which browsers cannot fetch directly, and keeps one copy on the server for every visitor.
 
-```
-site/          ← upload the contents of this folder to your web space
-  index.html     the page
-  api.php        data service (download + cache of KSH/Eurostat tables)
-  config.php     settings for the data service
-  lib/           PHP code (not reachable from the web)
-  cache/         where downloaded data is stored (must be writable)
-  assets/        scripts, styles, fonts, export libraries
-development/   tests against the Python app, mock KSH/Eurostat server, tools (do not upload)
-.github/       GitHub workflow for hosting on GitHub Pages instead (see GITHUB.md)
-```
-
-**No PHP host?** Publish it free on GitHub Pages with a weekly automatic data update: see `GITHUB.md`.
-
-## Put it online
-
-1. You need ordinary web hosting with **PHP 7.4 or newer** (8.x recommended) and either the **curl**
-   extension or `allow_url_fopen` switched on. Almost every shared host has both.
-2. Upload everything inside `site/` (including the hidden `.htaccess` files) to your web space by FTP/SFTP
-   or the host's file manager, for example to `public_html/pension/`.
-3. Make the `cache/` folder writable by PHP (permissions 755, or 775 if your host asks for it).
-4. Open the page, go to **Data** and press **Download latest official data**. The server fetches the KSH
-   STADAT tables and the Eurostat population by age and sex with the EUROPOP projection (about 10–40 s).
-   From then on every visitor gets that copy. Each projection variant is downloaded the first time it
-   is chosen.
-
-Check the server with `https://your-site/pension/api.php?action=ping`: it reports the PHP version, whether
-the server can download (`can_download`) and whether `cache/` is writable.
-
-Without PHP the page still works (opened from disk or on any static host): it then reads
-`data/official.json` if present (written by `php lib/build_static.php`, which the GitHub workflow runs),
-otherwise the bundled KSH tables. The download button is switched off in both cases.
 
 ### Options in `config.php`
 
