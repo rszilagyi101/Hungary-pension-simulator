@@ -1,5 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata from this file."
+doi: "10.5281/zenodo.24340937"
+repository-code: "https://github.com/rszilagyi101/Hungary-pension-simulator"
+url: "https://rszilagyi101.github.io/Hungary-pension-simulator/"
 type: software
 title: "Hungarian Pension Simulator"
 abstract: >-
@@ -12,7 +15,7 @@ authors:
   - given-names: "Róbert"
     family-names: "Szilágyi"
     orcid: "https://orcid.org/0000-0002-1783-6483"
-version: "1.0.0"
+version: "1.0.1"
 date-released: "2026-11-18"
 license: MIT
 keywords:
@@ -26,7 +29,3 @@ keywords:
   - Hungary
   - KSH
   - Eurostat
-# After the first Zenodo release, you can add the concept DOI and the addresses:
-# doi: "10.5281/zenodo.XXXXXXX"
-# repository-code: "https://github.com/F101hu/REPOSITORY-NAME"
-# url: "https://f101hu.github.io/REPOSITORY-NAME/"
